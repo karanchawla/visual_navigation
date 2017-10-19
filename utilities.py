@@ -54,6 +54,45 @@ def preprocess_grayscale(img):
     return preprocess_color(gray_img)
 
 
+def random_gamma(img):
+
+    """
+    Based on the implementation here:
+    http://www.pyimagesearch.com/2015/10/05/opencv-gamma-correction/
+    """
+
+    gamma = np.random.uniform(0.4, 1.5)
+    inv_gamma = 1.0 / gamma 
+    table = np.array([((i/255.)**inv_gamma)*255 
+        for i in np.arange(0,256).astype("uint8")])
+    
+    # apply gamma correction as lookup table 
+    return cv2.LUT(img, table)
+
+def random_shear(img, steering_angle, shear_range=200):
+    """
+    Source: https://medium.com/@ksakmann/behavioral-cloning-make-a-car-drive-like-yourself-dc6021152713#.7k8vfppvk
+    """
+
+    rows, cols, channels = image.shape
+    dx = np.random.randint(-shear_range, shear_range + 1)
+    random_point = [cols/2 + dx, rows/2]
+    pts1 = np.float32([[0, rows], [cols, rows], [cols / 2, rows / 2]])
+    pts2 = np.float32([[0, rows], [cols, rows], random_point])
+    dsteering = dx / (rows / 2) * 360 / (2 * np.pi * 25.0) / 6.0
+    M = cv2.getAffineTransform(pts1, pts2)
+    image = cv2.warpAffine(image, M, (cols, rows), borderMode=1)
+    steering_angle += dsteering
+
+    return image, steering_angle
+
+
+def random_rotation(image, steering_angle, rotation_amount=15):
+    angle = np.random.uniform(-rotation_amount, rotation_amount + 1)
+    rad = (np.pi / 180.0) * angle
+    return rotate(image, angle, reshape=False), steering_angle + (-1) * rad
+
+
 # In[6]:
 
 
@@ -115,8 +154,6 @@ def get_dataset_from_pickle(pickle_file_path):
     return pickle_data
 
 
-# In[1]:
-
 
 def batch_preprocess(image_input_dir, l_r_correction=0.2, debug=False, measurement_range=None):
     driving_log = get_dataset_from_csv(image_input_dir)
@@ -145,7 +182,11 @@ def batch_preprocess(image_input_dir, l_r_correction=0.2, debug=False, measureme
         if debug:
             print("Using center imahe path", center_img_path)
         center_image_matrix = cv2.imread(center_img_path)
-        preprocessed_center_image_matrix = preprocess_color(center_image_matrix)
+
+        preprocessed_center_image_matrix = random_gamma(center_image_matrix)
+        preprocessed_center_image_matrix, y_train[datum_index] = random_rotation(preprocessed_center_image_matrix, y_train[datum_index])
+        preprocessed_center_image_matrix, y_train[datum_index] = random_shear(preprocessed_center_image_matrix, y_train[datum_index])
+        preprocessed_center_image_matrix = preprocess_color(preprocessed_center_image_matrix)
         X_train[datum_index, :, :, :] = preprocessed_center_image_matrix
         
         #left image
@@ -155,7 +196,10 @@ def batch_preprocess(image_input_dir, l_r_correction=0.2, debug=False, measureme
         if debug:
             print("Using left image path", left_image_path)
         left_image_matrix = cv2.imread(left_image_path)
-        preprocessed_left_image_matrix = preprocess_color(left_image_matrix)
+        preprocessed_left_image_matrix = random_gamma(left_image_matrix)
+        preprocessed_left_image_matrix, y_train[datum_index+1] = random_rotation(preprocessed_left_image_matrix, y_train[datum_index+1])
+        preprocessed_left_image_matrix, y_train[datum_index+1] = random_shear(preprocessed_left_image_matrix, y_train[datum_index+1])
+        preprocessed_left_image_matrix = preprocess_color(preprocessed_left_image_matrix)
         X_train[datum_index + 1, :, :, :] = preprocessed_left_image_matrix  # left image matrix added to dataset
         # RIGHT CAMERA IMAGE
         y_train[datum_index + 2] = driving_log.iloc[measurement_index, 3] - l_r_correction  # right image steering value added to dataset
@@ -164,7 +208,10 @@ def batch_preprocess(image_input_dir, l_r_correction=0.2, debug=False, measureme
         if debug:
             print("Using right image path", right_image_path)
         right_image_matrix = cv2.imread(right_image_path)
-        preprocessed_right_image_matrix = preprocess_color(right_image_matrix)
+        preprocessed_right_image_matrix = random_gamma(right_image_matrix)
+        preprocessed_right_image_matrix, y_train[datum_index+2] = random_rotation(preprocessed_right_image_matrix, y_train[datum_index+2])
+        preprocessed_right_image_matrix, y_train[datum_index+2] = random_shear(preprocessed_right_image_matrix, y_train[datum_index+2])        
+        preprocessed_right_image_matrix = preprocess_color(preprocessed_right_image_matrix)
         X_train[datum_index + 2, :, :, :] = preprocessed_right_image_matrix  # right image matrix added to dataset
         
         # flip center image
