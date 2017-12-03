@@ -8,7 +8,7 @@ import helper
 
 number_of_epochs = 8
 number_of_samples_per_epoch = 20032
-number_of_validation_samples = 6400
+number_of_validation_samples = 3200
 learning_rate = 1e-4
 activation_relu = 'relu'
 

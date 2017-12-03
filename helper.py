@@ -11,8 +11,8 @@ from scipy.ndimage import rotate
 from scipy.stats import bernoulli
 
 # Some useful constants
-DRIVING_LOG_FILE = '/Users/karan/Desktop/terrasentia-gazebo/behavioral_cloning/data/driving_log.csv'
-IMG_PATH = '/Users/karan/Desktop/terrasentia-gazebo/behavioral_cloning/'
+DRIVING_LOG_FILE = os.getcwd() + '/data/driving_log.csv'
+IMG_PATH = os.getcwd() + '/'
 STEERING_COEFFICIENT = 0.229
 
 
