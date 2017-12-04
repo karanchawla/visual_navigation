@@ -1,91 +1,84 @@
 import argparse
 import base64
 import json
-from io import BytesIO
 
-import eventlet.wsgi
 import numpy as np
-import socketio
 import tensorflow as tf
 from PIL import Image
-from flask import Flask
 from keras.models import model_from_json
+
+#ROS messages
+from geometry_msgs.msg import Twist
+from cv_bridge import CvBridge, CvBridgeError 
+from sensor_msgs.msg import Image
+from std_msgs.msg import String
 
 import helper
 
-tf.python.control_flow_ops = tf
-
-sio = socketio.Server()
-app = Flask(__name__)
 model = None
 prev_image_array = None
 
+steering_pub = rospy.Publisher('/cmd_vel', Twist)
 
-def crop(image, top_cropping_percent):
-    assert 0 <= top_cropping_percent < 1.0, 'top_cropping_percent should be between zero and one'
-    percent = int(np.ceil(image.shape[0] * top_cropping_percent))
-    return image[percent:, :, :]
+class DeepDrive: 
 
+    def __init__(self):
+        self.image_sub = rospy.Subscriber("camera/image_raw", Image, self.telemetry)
+        self.bridge = CvBridge()
+        self.vel_pub = rospy.Publisher("/cmd_vel", Twist)
+        self.compressed = False
 
-@sio.on('telemetry')
-def telemetry(sid, data):
-    # The current steering angle of the car
-    steering_angle = data["steering_angle"]
+    def crop(self, image, top_cropping_percent):
+        assert 0 <= top_cropping_percent < 1.0, 'top_cropping_percent should be between zero and one'
+        percent = int(np.ceil(image.shape[0] * top_cropping_percent))
+        return image[percent:, :, :]
 
-    # The current throttle of the car
-    throttle = data["throttle"]
+    def telemetry(self, data):
 
-    # The current speed of the car
-    speed = data["speed"]
+        if self.compressed: 
+            cv_img = bridge.compressed_imgmsg_to_cv2(data, desired_encoding="bgr8")
+        else: 
+            cv_img = bridge.imgmsg_to_cv2(data, desired_encoding="bgr8") 
+    
+        image_array = np.asarray(cv_img)
 
-    # The current image from the center camera of the car
-    imgString = data["image"]
-    image = Image.open(BytesIO(base64.b64decode(imgString)))
-    image_array = np.asarray(image)
+        image_array = helper.crop(image_array, 0.35, 0.1)
+        image_array = helper.resize(image_array, new_dim=(64, 64))
 
-    image_array = helper.crop(image_array, 0.35, 0.1)
-    image_array = helper.resize(image_array, new_dim=(64, 64))
+        transformed_image_array = image_array[None, :, :, :]
 
-    transformed_image_array = image_array[None, :, :, :]
+        steering_angle = float(model.predict(transformed_image_array, batch_size=1))
 
-    # This model currently assumes that the features of the model are just the images. Feel free to change this.
+        # The driving model currently just outputs a constant throttle. 
+        # TO DO: Implement a PID controller here.
+        throttle = 0.3
+        
+        vel_msg = Twist()
+        vel_msg.linear.x = throttle
+        vel_msg.linear.y = 0
+        vel_msg.linear.z = 0
+        vel_msg.angular.x = 0
+        vel_msg.angular.y = 0
+        vel_msg.angular.z = steering_angle
 
-    steering_angle = float(model.predict(transformed_image_array, batch_size=1))
-    # The driving model currently just outputs a constant throttle. Feel free to edit this.
-    throttle = 0.3
+        vel_pub.publish(vel_msg)
 
-    print('{:.5f}, {:.1f}'.format(steering_angle, throttle))
-
-    send_control(steering_angle, throttle)
-
-
-@sio.on('connect')
-def connect(sid, environ):
-    print("connect ", sid)
-    send_control(0, 0)
-
-
-def send_control(steering_angle, throttle):
-    sio.emit("steer", data={
-        'steering_angle': steering_angle.__str__(),
-        'throttle': throttle.__str__()
-    }, skip_sid=True)
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Remote Driving')
-    parser.add_argument('model', type=str,
-                        help='Path to model definition json. Model weights should be on the same path.')
-    args = parser.parse_args()
-    with open(args.model, 'r') as jfile:
+def main(args):
+    behavior_cloning = DeepDrive()
+    rospy.init_node('behavior_cloning', anonymous=True)
+    model = #Add model path here
+    with open(model, 'r') as jfile:
         model = model_from_json(json.load(jfile))
 
     model.compile("adam", "mse")
-    weights_file = args.model.replace('json', 'h5')
+    weights_file = model.replace('json', 'h5')
     model.load_weights(weights_file)
 
-    # wrap Flask application with engineio's middleware
-    app = socketio.Middleware(sio, app)
+    try: 
+        rospy.spin()
+    except KeyboardInterrupt:
+        print("Shutting Down")
 
-    # deploy as an eventlet WSGI server
-    eventlet.wsgi.server(eventlet.listen(('', 4567)), app)
+
+if __name__ == "__main__":
+    main(sys.argv)
