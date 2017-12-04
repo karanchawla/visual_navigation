@@ -1,3 +1,5 @@
+import rospy
+import sys
 import argparse
 import base64
 import json
@@ -6,6 +8,10 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 from keras.models import model_from_json
+from keras.layers import Dense, Flatten, Lambda, Activation, MaxPooling2D
+from keras.layers.convolutional import Convolution2D
+from keras.models import Sequential
+from keras.optimizers import Adam
 
 #ROS messages
 from geometry_msgs.msg import Twist
@@ -16,17 +22,15 @@ from std_msgs.msg import String
 import helper
 
 model = None
-prev_image_array = None
-
-steering_pub = rospy.Publisher('/cmd_vel', Twist)
 
 class DeepDrive: 
 
-    def __init__(self):
+    def __init__(self, model_):
         self.image_sub = rospy.Subscriber("camera/image_raw", Image, self.telemetry)
         self.bridge = CvBridge()
-        self.vel_pub = rospy.Publisher("/cmd_vel", Twist)
+        self.vel_pub = rospy.Publisher("/cmd_vel", Twist,queue_size=10)
         self.compressed = False
+        self.model = model_
 
     def crop(self, image, top_cropping_percent):
         assert 0 <= top_cropping_percent < 1.0, 'top_cropping_percent should be between zero and one'
@@ -36,9 +40,9 @@ class DeepDrive:
     def telemetry(self, data):
 
         if self.compressed: 
-            cv_img = bridge.compressed_imgmsg_to_cv2(data, desired_encoding="bgr8")
+            cv_img = self.bridge.compressed_imgmsg_to_cv2(data, desired_encoding="bgr8")
         else: 
-            cv_img = bridge.imgmsg_to_cv2(data, desired_encoding="bgr8") 
+            cv_img = self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8") 
     
         image_array = np.asarray(cv_img)
 
@@ -47,7 +51,7 @@ class DeepDrive:
 
         transformed_image_array = image_array[None, :, :, :]
 
-        steering_angle = float(model.predict(transformed_image_array, batch_size=1))
+        steering_angle = float(self.model.predict(transformed_image_array))
 
         # The driving model currently just outputs a constant throttle. 
         # TO DO: Implement a PID controller here.
@@ -63,17 +67,25 @@ class DeepDrive:
 
         vel_pub.publish(vel_msg)
 
+
 def main(args):
-    behavior_cloning = DeepDrive()
+    model_path = "model.json"
+    hd5_path = "model.h5"
+    model_file = open(model_path,'r')
+    loaded_model_json = model_file.read()
+    model_file.close()
+
+    loaded_model = model_from_json(loaded_model_json)
+
+    loaded_model.compile(optimizer='adam', loss='mse')
+    
+    weights_file = model_path.replace('json', 'h5')
+    loaded_model.load_weights(hd5_path)
+
+    behavior_cloning = DeepDrive(loaded_model)
     rospy.init_node('behavior_cloning', anonymous=True)
-    model = #Add model path here
-    with open(model, 'r') as jfile:
-        model = model_from_json(json.load(jfile))
-
-    model.compile("adam", "mse")
-    weights_file = model.replace('json', 'h5')
-    model.load_weights(weights_file)
-
+    
+    
     try: 
         rospy.spin()
     except KeyboardInterrupt:
