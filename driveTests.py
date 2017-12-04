@@ -7,6 +7,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 from keras.models import model_from_json
+from keras.models import model_from_yaml
 import helper
 
 import cv2 
@@ -59,18 +60,24 @@ def create_model():
     return model
 
 def main():
-    model_path = "model.json"
+    model_path = "model.yaml"
     hd5_path = "model.h5"
     model_file = open(model_path,'r')
-    loaded_model_json = model_file.read()
-    model_file.close()
-    loaded_model = model_from_json(loaded_model_json)
+    # loaded_model_json = model_file.read()
+    # loaded_model_yaml = model_file
+    # model_file.close()
+    # loaded_model = model_from_json(loaded_model_json)
+    
+    yaml_file = open('model.yaml', 'r')
+    loaded_model_yaml = yaml_file.read()
+    yaml_file.close()
+    loaded_model = model_from_yaml(loaded_model_yaml)
 
     loaded_model.compile(optimizer='adam', loss='mse')
     
     weights_file = model_path.replace('json', 'h5')
     loaded_model.load_weights(hd5_path)
-    cv_img = cv2.imread('1.jpg')
+    cv_img = cv2.imread('images/1.jpg')
     
     image_array = np.asarray(cv_img)
 
@@ -79,7 +86,7 @@ def main():
 
     transformed_image_array = image_array[None, :, :, :]
 
-    print(loaded_model.predict(transformed_image_array))
+    print(float(loaded_model.predict(transformed_image_array)))
 
 
 if __name__ == "__main__":

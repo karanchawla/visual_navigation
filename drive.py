@@ -71,11 +71,16 @@ class DeepDrive:
 def main(args):
     model_path = "model.json"
     hd5_path = "model.h5"
-    model_file = open(model_path,'r')
-    loaded_model_json = model_file.read()
-    model_file.close()
+    # model_file = open(model_path,'r')
+    # loaded_model_json = model_file.read()
+    # model_file.close()
 
-    loaded_model = model_from_json(loaded_model_json)
+    # loaded_model = model_from_json(loaded_model_json)
+
+    yaml_file = open('model.yaml', 'r')
+    loaded_model_yaml = yaml_file.read()
+    yaml_file.close()
+    loaded_model = model_from_yaml(loaded_model_yaml)
 
     loaded_model.compile(optimizer='adam', loss='mse')
     
