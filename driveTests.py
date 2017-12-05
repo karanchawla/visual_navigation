@@ -8,13 +8,18 @@ import tensorflow as tf
 from PIL import Image
 from keras.models import model_from_json
 from keras.models import model_from_yaml
+from keras.layers import Dense, Flatten, Lambda, Activation, MaxPooling2D
+from keras.layers.convolutional import Convolution2D
+from keras.models import Sequential
+from keras.optimizers import Adam
 import helper
 
 import cv2 
 
 activation_relu = 'relu'
 
-def create_model():
+# Check if this can be moved to the Class
+def create_model(hd5Path):
     model = Sequential()
 
     model.add(Lambda(lambda x: x / 127.5 - 1.0, input_shape=(64, 64, 3)))
@@ -57,26 +62,19 @@ def create_model():
 
     model.add(Dense(1))
 
+    model.compile(optimizer='adam', loss='mse')
+
+    model.load_weights(hd5Path)
+
     return model
 
-def main():
-    model_path = "model.yaml"
-    hd5_path = "model.h5"
-    model_file = open(model_path,'r')
-    # loaded_model_json = model_file.read()
-    # loaded_model_yaml = model_file
-    # model_file.close()
-    # loaded_model = model_from_json(loaded_model_json)
-    
-    yaml_file = open('model.yaml', 'r')
-    loaded_model_yaml = yaml_file.read()
-    yaml_file.close()
-    loaded_model = model_from_yaml(loaded_model_yaml)
 
-    loaded_model.compile(optimizer='adam', loss='mse')
-    
-    weights_file = model_path.replace('json', 'h5')
-    loaded_model.load_weights(hd5_path)
+# Create model and load weights
+model = create_model("model.h5")
+model._make_predict_function()
+graph = tf.get_default_graph()
+
+def main():
     cv_img = cv2.imread('images/1.jpg')
     
     image_array = np.asarray(cv_img)
@@ -86,7 +84,7 @@ def main():
 
     transformed_image_array = image_array[None, :, :, :]
 
-    print(float(loaded_model.predict(transformed_image_array)))
+    print(float(model.predict(transformed_image_array)))
 
 
 if __name__ == "__main__":
