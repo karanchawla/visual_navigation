@@ -6,7 +6,7 @@
 # 	and user-friendly method to extract data from rosbag file. 
 #
 # Current Recommended Usage: (in terminal)
-# 	python extract_images.py <bagfile path> <image_topic> <steering_angle_topic> <outputdir to persist imaes> <compressed>
+# 	python extractImages.py <bagfile path> <image_topic> <steering_angle_topic> <outputdir to persist imaes> <compressed>
 
 #!/usr/bin/env python
 import cv2
@@ -109,15 +109,21 @@ class ExtractFilesRosBag:
 
 		with open(steering_file, 'w') as f:
 			for topic, msg, t in bag.read_messages(topics=[topic]): 
-				f.write(str(msg.angular.z))
-				f.write("\n")
+				# TO DO: 
+				# Make this function more accomodative for other topics
+				# Think about kinds of topics/interface it'll need
+				if(topic=="cmd_vel" or topic=="cmd_vel/"):
+					f.write(str(msg.angular.z))
+					f.write("\n")
 		bag.close() 
 
 
 # Running the program
 if __name__ == "__main__":
 	if len(sys.argv) <= 1:
-		print("python extract_images.py <bagfile path> <image_topic> <steering_angle_topic> <outputdir to persist imaes> <compressed>")
+		print("python extractImages.py <bagfile path> <image_topic> <steering_angle_topic> <outputdir to persist images> <compressed> \n")
+		print("python extractImages.py myBagFile.bag camera/image_raw cmd_vel ~/Desktop/Data False \n")
+		print("Note that the directory is created at runtime so you only need to provide the path")
 		sys.exit() 
 
 	bagfile = sys.argv[1]
