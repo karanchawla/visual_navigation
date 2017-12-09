@@ -125,7 +125,19 @@ class DeepDrive:
         with graph.as_default():
             steering_angle = float(model.predict(transformed_image_array, batch_size=1))
 
-        self.publish_command(steering_angle)
+        # self.publish_command(steering_angle)
+
+        throttle = 0.3
+        vel_msg = Twist()
+        vel_msg.linear.x = throttle
+        vel_msg.linear.y = 0
+        vel_msg.linear.z = 0
+        vel_msg.angular.x = 0
+        vel_msg.angular.y = 0
+        vel_msg.angular.z = steering_angle
+        # To Do: 
+        # Add a PID control here
+        self.vel_pub.publish(vel_msg)
 
 
 def main(args):
