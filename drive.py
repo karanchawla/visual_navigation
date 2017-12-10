@@ -20,6 +20,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
 import helper
+import PID as controller
 
 activation_relu = 'relu'
 
@@ -79,6 +80,7 @@ model = create_model("model.h5")
 model._make_predict_function()
 graph = tf.get_default_graph()
 
+
 class DeepDrive:
 
     def __init__(self):
@@ -89,6 +91,7 @@ class DeepDrive:
         self.bridge = CvBridge()
         self.vel_pub = rospy.Publisher("/cmd_vel", Twist,queue_size=10)
         self.compressed = False
+        self.controller = controller.PID(0.008,0.005,0,0,0)
 
     def crop(self, image, top_cropping_percent):
         assert 0 <= top_cropping_percent < 1.0, 'top_cropping_percent should be between zero and one'
@@ -103,7 +106,7 @@ class DeepDrive:
         vel_msg.linear.z = 0
         vel_msg.angular.x = 0
         vel_msg.angular.y = 0
-        vel_msg.angular.z = steer
+        # vel_msg.angular.z = self.controller.update_PID(steer)
         # To Do: 
         # Add a PID control here
         self.vel_pub.publish(vel_msg)
@@ -134,9 +137,15 @@ class DeepDrive:
         vel_msg.linear.z = 0
         vel_msg.angular.x = 0
         vel_msg.angular.y = 0
-        vel_msg.angular.z = steering_angle
+        vel_msg.angular.z = self.controller.update_PID(steering_angle)
+	print(vel_msg.angular.z, steering_angle)
         # To Do: 
         # Add a PID control here
+        self.vel_pub.publish(vel_msg)
+
+
+    def __del__(self):
+	vel_msg = Twist()
         self.vel_pub.publish(vel_msg)
 
 

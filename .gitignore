@@ -1,0 +1,22 @@
+# Compiled source #
+*.pyc
+*.so
+*.exe
+*.dll
+
+# Packages #
+*.dmg
+*.tar
+*.zip
+*.rar
+*.jar
+
+# OS generated files #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
