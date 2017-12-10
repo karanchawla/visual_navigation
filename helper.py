@@ -151,7 +151,7 @@ def min_max(data, a=-0.5, b=0.5):
 
 
 def generate_new_image(image, steering_angle, top_crop_percent=0.35, bottom_crop_percent=0.1,
-                       resize_dim=(64, 64), do_shear_prob=0.9):
+                       resize_dim=(64, 64), do_shear_prob=0.1):
     """
 
     :param image:
@@ -196,7 +196,7 @@ def get_next_image_files(batch_size=64):
 
     image_files_and_angles = []
     for index in rnd_indices:
-        img = data.iloc[index]['center'].strip()
+        img = data.iloc[index]['image'].strip()
         angle = data.iloc[index]['steering']
         image_files_and_angles.append((img, angle))
 
