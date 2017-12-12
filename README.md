@@ -57,3 +57,18 @@ In the final state of the pipeline, we resize images to 64x64 in order to reduce
 <p align="center">
  <img src="./images/resized.png">
 </p>
+
+### Visualizing Network
+As can be seen, the model learns to look at different parts of the image for the three decisions on whether to turn left, right or maintain steering and the heatmaps are intuitive for their corresponding control actions. 
+
+<p align="center">
+ <img src="./images/Unknown.png">
+</p>
+
+<p align="center">
+ <img src="./images/Unknown2.png">
+</p>
+
+<p align="center">
+ <img src="./images/Unknown3.png">
+</p>
